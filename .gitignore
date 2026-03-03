@@ -1,0 +1,78 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+.venv
+venv/
+env/
+ENV/
+
+# Environment variables and secrets
+.env
+.env.local
+.env.production
+credentials/
+keys/
+*token*
+*secret*
+webhook_url.txt
+
+credentials.json
+*.jsonkey
+*.p12
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+logs/
+
+# Dataset files (if large)
+dataset/
+training_data/
+*.jsonl
+
+# Model files (if large)
+models/
+*.h5
+*.pkl
+*.model
+*.pt
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Telegram session files
+*.session
+
+# Database files (SQLite)
+*.db
+*.sqlite3
