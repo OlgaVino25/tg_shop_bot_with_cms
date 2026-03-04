@@ -18,5 +18,5 @@ def get_products_keyboard(products):
 
 def get_back_keyboard():
     """Возвращает клавиатуру с одной кнопкой 'Назад'."""
-    keyboard = [[InlineKeyboardButton(text="Назад к списку", callback_data="back")]]
+    keyboard = [[InlineKeyboardButton(text="Назад", callback_data="back")]]
     return InlineKeyboardMarkup(inline_keyboard=keyboard)

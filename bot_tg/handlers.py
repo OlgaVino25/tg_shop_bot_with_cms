@@ -63,6 +63,8 @@ async def process_product_selection(callback: types.CallbackQuery, state: FSMCon
         )
     else:
         await callback.message.answer(text, reply_markup=get_back_keyboard())
+
+    await state.set_state(ShopStates.HANDLE_DESCRIPTION)
     await callback.answer()
 
 
