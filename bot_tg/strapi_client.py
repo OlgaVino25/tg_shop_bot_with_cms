@@ -8,6 +8,7 @@ logger = logging.getLogger(__name__)
 STRAPI_URL = "http://localhost:1337/api/products"
 CART_URL = "http://localhost:1337/api/carts"
 CART_ITEM_URL = "http://localhost:1337/api/cart-items"
+CUSTOMER_URL = "http://localhost:1337/api/customers"
 
 
 def fetch_products():
@@ -148,3 +149,26 @@ def delete_cart_item(item_id: str):
     except RequestException:
         logger.exception(f"Ошибка при удалении элемента корзины {item_id}")
         return False
+
+
+def create_customer(user_id: str, email: str):
+    """Создаёт запись клиента в Strapi."""
+    try:
+        payload = {
+            "data": {
+                "userId": user_id,
+                "email": email,
+            }
+        }
+
+        response = requests.post(CUSTOMER_URL, json=payload)
+
+        if response.ok:
+            logger.info(f"Customer created for user {user_id} with email {email}")
+            return response.json()["data"]["documentId"]
+        else:
+            logger.error(f"Failed to create customer: {response.status_code}")
+
+    except RequestException:
+        logger.exception("Error creating customer")
+    return None

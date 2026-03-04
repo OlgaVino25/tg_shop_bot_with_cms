@@ -20,6 +20,7 @@ from bot_tg.strapi_client import (
     add_to_cart,
     get_cart_contents,
     delete_cart_item,
+    create_customer,
 )
 
 from pathlib import Path
@@ -207,11 +208,17 @@ async def process_email_input(message: types.Message, state: FSMContext):
         )
         return
 
-    logger.info(f"Email от пользователя {message.from_user.id}: {email}")
+    user_id = str(message.from_user.id)
+    customer_id = create_customer(user_id, email)
 
-    await message.answer(
-        f"Спасибо! Ваш email {email} принят. Мы скоро свяжемся с вами."
-    )
+    if customer_id:
+        logger.info(f"Customer saved with ID {customer_id}")
+        await message.answer(
+            f"Спасибо! Ваш email {email} принят. Мы скоро свяжемся с вами."
+        )
+    else:
+        await message.answer("Не удалось сохранить ваши данные. Попробуйте позже.")
+
     await send_products_list(message.chat.id, message.bot, state)
 
 
