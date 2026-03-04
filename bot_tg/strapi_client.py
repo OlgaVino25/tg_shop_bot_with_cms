@@ -118,11 +118,11 @@ def get_cart_contents(cart_id: str):
     """Возвращает список товаров в корзине с количеством."""
     try:
         response = requests.get(
-            f"{CART_URL}/{cart_id}", params={"populate": "items.product"}
+            f"{CART_URL}/{cart_id}", params={"populate": "cart_items.product"}
         )
         if response.ok:
             data = response.json()["data"]
-            items = data.get("items", [])
+            items = data.get("cart_items", [])
             result = []
             for item in items:
                 product = item.get("product", {})

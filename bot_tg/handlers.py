@@ -6,13 +6,18 @@ from aiogram.types import BufferedInputFile
 from aiogram.fsm.context import FSMContext
 
 from bot_tg.states import ShopStates
-from bot_tg.keyboards import get_products_keyboard, get_product_detail_keyboard
+from bot_tg.keyboards import (
+    get_main_menu_keyboard,
+    get_product_detail_keyboard,
+    get_back_to_menu_keyboard,
+)
 from bot_tg.strapi_client import (
     fetch_products,
     fetch_product,
     fetch_product_image,
     get_or_create_cart,
     add_to_cart,
+    get_cart_contents,
 )
 
 from pathlib import Path
@@ -32,7 +37,7 @@ async def send_products_list(chat_id, bot, state):
     if not products:
         await bot.send_message(chat_id, "Товаров пока нет.")
         return False
-    keyboard = get_products_keyboard(products)
+    keyboard = get_main_menu_keyboard(products)
     await bot.send_message(chat_id, "Наши товары:", reply_markup=keyboard)
     await state.set_state(ShopStates.HANDLE_MENU)
     return
@@ -99,6 +104,37 @@ async def add_to_cart_handler(callback: types.CallbackQuery, state: FSMContext):
         await callback.answer("✅ Товар добавлен в корзину!", show_alert=True)
     else:
         await callback.answer("❌ Ошибка при добавлении.", show_alert=True)
+
+
+async def show_cart_handler(callback: types.CallbackQuery, state: FSMContext):
+    """Показывает содержимое корзины пользователя."""
+    user_id = str(callback.from_user.id)
+    cart_id = get_or_create_cart(user_id)
+
+    if not cart_id:
+        await callback.answer("Не удалось получить корзину.", show_alert=True)
+        return
+
+    items = get_cart_contents(cart_id)
+
+    if not items:
+        text = "🛒 Ваша корзина пуста."
+    else:
+        text = "🛒 *Ваша корзина:*\n\n"
+        total = 0.0
+        for item in items:
+            title = item.get("title", "?")
+            price = item.get("price", 0)
+            qty = item.get("quantity", 0)
+            cost = price * qty
+            text += f"• {title} — {qty} кг × {price} руб. = {cost:.2f} руб.\n"
+            total += cost
+        text += f"\n*Итого: {total:.2f} руб.*"
+
+    await callback.message.answer(
+        text, parse_mode="Markdown", reply_markup=get_back_to_menu_keyboard()
+    )
+    await callback.answer()
 
 
 async def handle_unknown(message: types.Message, state: FSMContext):
