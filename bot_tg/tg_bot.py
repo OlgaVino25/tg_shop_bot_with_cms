@@ -35,6 +35,9 @@ async def main():
     dp.callback_query.register(tg_h.add_to_cart_handler, F.data == "add_to_cart")
     dp.callback_query.register(tg_h.show_cart_handler, F.data == "show_cart")
     dp.callback_query.register(tg_h.back_to_products, F.data == "back")
+    dp.callback_query.register(
+        tg_h.delete_from_cart_handler, F.data.startswith("delete_")
+    )
     dp.callback_query.register(tg_h.process_product_selection, F.data != "back")
     dp.message.register(tg_h.handle_unknown)
     try:

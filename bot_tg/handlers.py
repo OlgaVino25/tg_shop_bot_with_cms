@@ -10,6 +10,7 @@ from bot_tg.keyboards import (
     get_main_menu_keyboard,
     get_product_detail_keyboard,
     get_back_to_menu_keyboard,
+    get_cart_keyboard,
 )
 from bot_tg.strapi_client import (
     fetch_products,
@@ -18,6 +19,7 @@ from bot_tg.strapi_client import (
     get_or_create_cart,
     add_to_cart,
     get_cart_contents,
+    delete_cart_item,
 )
 
 from pathlib import Path
@@ -132,9 +134,56 @@ async def show_cart_handler(callback: types.CallbackQuery, state: FSMContext):
         text += f"\n*Итого: {total:.2f} руб.*"
 
     await callback.message.answer(
-        text, parse_mode="Markdown", reply_markup=get_back_to_menu_keyboard()
+        text, parse_mode="Markdown", reply_markup=get_cart_keyboard(items)
     )
+
+    await state.set_state(ShopStates.HANDLE_CART)
     await callback.answer()
+
+
+async def delete_from_cart_handler(callback: types.CallbackQuery, state: FSMContext):
+    """Удаляет выбранный товар из корзины и обновляет сообщение."""
+    item_id = callback.data.split("_", 1)[1]
+    success = delete_cart_item(item_id)
+
+    if success:
+        await callback.answer("Товар удалён из корзины.")
+
+        user_id = str(callback.from_user.id)
+        cart_id = get_or_create_cart(user_id)
+
+        if cart_id:
+            items = get_cart_contents(cart_id)
+
+            if items:
+                text = "🛒 *Ваша корзина:*\n\n"
+                total = 0.0
+                for item in items:
+                    title = item.get("title", "?")
+                    price = item.get("price", 0)
+                    qty = item.get("quantity", 0)
+                    cost = price * qty
+                    text += f"• {title} — {qty} кг × {price} руб. = {cost:.2f} руб.\n"
+                    total += cost
+                text += f"\n*Итого: {total:.2f} руб.*"
+
+                await callback.message.edit_text(
+                    text, parse_mode="Markdown", reply_markup=get_cart_keyboard(items)
+                )
+
+            else:
+                await callback.message.edit_text(
+                    "🛒 Ваша корзина пуста.",
+                    reply_markup=get_back_to_menu_keyboard(),
+                )
+
+        else:
+            await callback.message.edit_text("Ошибка при обновлении корзины.")
+
+    else:
+        await callback.answer("Ошибка при удалении товара.", show_alert=True)
+
+    await state.set_state(ShopStates.HANDLE_CART)
 
 
 async def handle_unknown(message: types.Message, state: FSMContext):

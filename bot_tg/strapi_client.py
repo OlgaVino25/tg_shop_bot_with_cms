@@ -138,3 +138,13 @@ def get_cart_contents(cart_id: str):
     except RequestException:
         logger.exception("Ошибка при получении корзины")
     return None
+
+
+def delete_cart_item(item_id: str):
+    """Удаляет элемент корзины по его documentId."""
+    try:
+        response = requests.delete(f"{CART_ITEM_URL}/{item_id}")
+        return response.ok
+    except RequestException:
+        logger.exception(f"Ошибка при удалении элемента корзины {item_id}")
+        return False
