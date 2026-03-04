@@ -32,8 +32,9 @@ async def main():
     dp = Dispatcher(storage=storage)
 
     dp.message.register(tg_h.start, Command(commands=["start"]))
-    dp.callback_query.register(tg_h.process_product_selection, F.data != "back")
+    dp.callback_query.register(tg_h.add_to_cart_handler, F.data == "add_to_cart")
     dp.callback_query.register(tg_h.back_to_products, F.data == "back")
+    dp.callback_query.register(tg_h.process_product_selection, F.data != "back")
     dp.message.register(tg_h.handle_unknown)
     try:
         await dp.start_polling(bot)

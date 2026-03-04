@@ -6,8 +6,14 @@ from aiogram.types import BufferedInputFile
 from aiogram.fsm.context import FSMContext
 
 from bot_tg.states import ShopStates
-from bot_tg.keyboards import get_products_keyboard, get_back_keyboard
-from bot_tg.strapi_client import fetch_products, fetch_product, fetch_product_image
+from bot_tg.keyboards import get_products_keyboard, get_product_detail_keyboard
+from bot_tg.strapi_client import (
+    fetch_products,
+    fetch_product,
+    fetch_product_image,
+    get_or_create_cart,
+    add_to_cart,
+)
 
 from pathlib import Path
 
@@ -39,6 +45,7 @@ async def start(message: types.Message, state: FSMContext):
 async def process_product_selection(callback: types.CallbackQuery, state: FSMContext):
     """Показывает детальную информацию о выбранном товаре."""
     product_id = callback.data
+    await state.update_data(current_product_id=product_id)
     product = fetch_product(product_id)
 
     if not product:
@@ -59,10 +66,10 @@ async def process_product_selection(callback: types.CallbackQuery, state: FSMCon
         await callback.message.answer_photo(
             photo=BufferedInputFile(image.getvalue(), filename="product.jpg"),
             caption=text,
-            reply_markup=get_back_keyboard(),
+            reply_markup=get_product_detail_keyboard(),
         )
     else:
-        await callback.message.answer(text, reply_markup=get_back_keyboard())
+        await callback.message.answer(text, reply_markup=get_product_detail_keyboard())
 
     await state.set_state(ShopStates.HANDLE_DESCRIPTION)
     await callback.answer()
@@ -71,6 +78,27 @@ async def process_product_selection(callback: types.CallbackQuery, state: FSMCon
 async def back_to_products(callback: types.CallbackQuery, state: FSMContext):
     await send_products_list(callback.message.chat.id, callback.message.bot, state)
     await callback.answer()
+
+
+async def add_to_cart_handler(callback: types.CallbackQuery, state: FSMContext):
+    """Добавляет текущий товар в корзину пользователя."""
+    user_id = str(callback.from_user.id)
+    data = await state.get_data()
+    product_id = data.get("current_product_id")
+    if not product_id:
+        await callback.answer("Ошибка: товар не найден.")
+        return
+
+    cart_id = get_or_create_cart(user_id)
+    if not cart_id:
+        await callback.answer("Не удалось создать корзину.", show_alert=True)
+        return
+
+    success = add_to_cart(cart_id, product_id, quantity=1.0)
+    if success:
+        await callback.answer("✅ Товар добавлен в корзину!", show_alert=True)
+    else:
+        await callback.answer("❌ Ошибка при добавлении.", show_alert=True)
 
 
 async def handle_unknown(message: types.Message, state: FSMContext):
