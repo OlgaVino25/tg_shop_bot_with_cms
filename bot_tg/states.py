@@ -6,4 +6,5 @@ class ShopStates(StatesGroup):
     HANDLE_MENU = State()
     HANDLE_DESCRIPTION = State()
     HANDLE_CART = State()
+    WAITING_EMAIL = State()
     ANSWERING = State()

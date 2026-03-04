@@ -28,13 +28,23 @@ def get_product_detail_keyboard():
     ]
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
+
 def get_cart_keyboard(items):
-    """Клавиатура для корзины: список товаров с кнопками удаления и кнопка назад."""
+    """Клавиатура для корзины: удаление, оплата, назад.."""
     buttons = []
 
     for item in items:
         item_id = item["item_id"]
-        buttons.append([InlineKeyboardButton(text=f"❌ Удалить {item.get('title', '')[:20]}", callback_data=f"delete_{item_id}")])
+
+        buttons.append(
+            [
+                InlineKeyboardButton(
+                    text=f"❌ Удалить {item.get('title', '')[:20]}",
+                    callback_data=f"delete_{item_id}",
+                )
+            ]
+        )
+    buttons.append([InlineKeyboardButton(text="Оплатить", callback_data="checkout")])
 
     buttons.append(
         [InlineKeyboardButton(text="Назад к списку товаров", callback_data="back")]

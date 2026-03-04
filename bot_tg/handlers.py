@@ -186,6 +186,35 @@ async def delete_from_cart_handler(callback: types.CallbackQuery, state: FSMCont
     await state.set_state(ShopStates.HANDLE_CART)
 
 
+async def checkout_handler(callback: types.CallbackQuery, state: FSMContext):
+    """Запрашивает email для связи и переводит в состояние WAITING_EMAIL."""
+    await callback.message.answer(
+        "Для оформления заказа укажите вашу электронную почту.\n"
+        "Наш менеджер свяжется с вами для подтверждения."
+    )
+
+    await state.set_state(ShopStates.WAITING_EMAIL)
+    await callback.answer()
+
+
+async def process_email_input(message: types.Message, state: FSMContext):
+    """Получает email, выводит его в консоль и возвращает пользователя в меню."""
+    email = message.text.strip()
+
+    if "@" not in email or "." not in email:
+        await message.answer(
+            "Пожалуйста, введите корректный email (например, name@domain.com)."
+        )
+        return
+
+    logger.info(f"Email от пользователя {message.from_user.id}: {email}")
+
+    await message.answer(
+        f"Спасибо! Ваш email {email} принят. Мы скоро свяжемся с вами."
+    )
+    await send_products_list(message.chat.id, message.bot, state)
+
+
 async def handle_unknown(message: types.Message, state: FSMContext):
     """Обработчик для нераспознанных сообщений."""
     await message.answer("Перевожу на оператора")
