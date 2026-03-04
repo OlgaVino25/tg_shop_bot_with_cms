@@ -1,4 +1,3 @@
-import sys
 import logging
 
 from aiogram import types
@@ -23,12 +22,25 @@ from bot_tg.strapi_client import (
     create_customer,
 )
 
-from pathlib import Path
-
-BASE_DIR = Path(__file__).parent.parent
-sys.path.insert(0, str(BASE_DIR))
 
 logger = logging.getLogger(__name__)
+
+
+def format_cart_text(items):
+    """Форматирует текст корзины из списка товаров."""
+    if not items:
+        return "🛒 Ваша корзина пуста."
+    text = "🛒 *Ваша корзина:*\n\n"
+    total = 0.0
+    for item in items:
+        title = item.get("title", "?")
+        price = item.get("price", 0)
+        qty = item.get("quantity", 0)
+        cost = price * qty
+        text += f"• {title} — {qty} кг × {price} руб. = {cost:.2f} руб.\n"
+        total += cost
+    text += f"\n*Итого: {total:.2f} руб.*"
+    return text
 
 
 async def send_products_list(chat_id, bot, state):
@@ -36,14 +48,13 @@ async def send_products_list(chat_id, bot, state):
     products = fetch_products()
     if products is None:
         await bot.send_message(chat_id, "Не удалось подключиться к базе товаров.")
-        return False
+        return
     if not products:
         await bot.send_message(chat_id, "Товаров пока нет.")
-        return False
+        return
     keyboard = get_main_menu_keyboard(products)
     await bot.send_message(chat_id, "Наши товары:", reply_markup=keyboard)
     await state.set_state(ShopStates.HANDLE_MENU)
-    return
 
 
 async def start(message: types.Message, state: FSMContext):
@@ -120,22 +131,12 @@ async def show_cart_handler(callback: types.CallbackQuery, state: FSMContext):
 
     items = get_cart_contents(cart_id)
 
-    if not items:
-        text = "🛒 Ваша корзина пуста."
-    else:
-        text = "🛒 *Ваша корзина:*\n\n"
-        total = 0.0
-        for item in items:
-            title = item.get("title", "?")
-            price = item.get("price", 0)
-            qty = item.get("quantity", 0)
-            cost = price * qty
-            text += f"• {title} — {qty} кг × {price} руб. = {cost:.2f} руб.\n"
-            total += cost
-        text += f"\n*Итого: {total:.2f} руб.*"
+    text = format_cart_text(items)
 
     await callback.message.answer(
-        text, parse_mode="Markdown", reply_markup=get_cart_keyboard(items)
+        text,
+        parse_mode="Markdown",
+        reply_markup=get_cart_keyboard(items) if items else get_back_to_menu_keyboard(),
     )
 
     await state.set_state(ShopStates.HANDLE_CART)
@@ -157,16 +158,7 @@ async def delete_from_cart_handler(callback: types.CallbackQuery, state: FSMCont
             items = get_cart_contents(cart_id)
 
             if items:
-                text = "🛒 *Ваша корзина:*\n\n"
-                total = 0.0
-                for item in items:
-                    title = item.get("title", "?")
-                    price = item.get("price", 0)
-                    qty = item.get("quantity", 0)
-                    cost = price * qty
-                    text += f"• {title} — {qty} кг × {price} руб. = {cost:.2f} руб.\n"
-                    total += cost
-                text += f"\n*Итого: {total:.2f} руб.*"
+                text = format_cart_text(items)
 
                 await callback.message.edit_text(
                     text, parse_mode="Markdown", reply_markup=get_cart_keyboard(items)

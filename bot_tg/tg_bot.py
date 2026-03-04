@@ -1,22 +1,16 @@
-import sys
 import asyncio
 import logging
-import requests
 
-from pathlib import Path
-
-BASE_DIR = Path(__file__).parent.parent
-sys.path.insert(0, str(BASE_DIR))
-
-from aiogram import Bot, Dispatcher
-from aiogram.filters import Command, StateFilter
+from aiogram import Bot, Dispatcher, F
+from aiogram.filters import Command
 from aiogram.fsm.storage.memory import MemoryStorage
 
 from settings import TG_TOKEN, ADMIN_CHAT_ID
-from aiogram import F
 from bot_tg import handlers as tg_h
 from bot_tg.states import ShopStates
 from logger import setup_logging
+
+
 
 
 logger = logging.getLogger(__name__)
