@@ -11,8 +11,6 @@ from bot_tg.states import ShopStates
 from logger import setup_logging
 
 
-
-
 logger = logging.getLogger(__name__)
 
 
