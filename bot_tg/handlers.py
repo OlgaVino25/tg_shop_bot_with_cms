@@ -3,6 +3,7 @@ import logging
 from aiogram import types
 from aiogram.types import BufferedInputFile
 from aiogram.fsm.context import FSMContext
+from requests.exceptions import RequestException
 
 from bot_tg.states import ShopStates
 from bot_tg.keyboards import (
@@ -45,13 +46,17 @@ def format_cart_text(items):
 
 async def send_products_list(chat_id, bot, state):
     """Общая логика получения товаров и отправки клавиатуры."""
-    products = fetch_products()
-    if products is None:
+    try:
+        products = fetch_products()
+    except RequestException:
+        logger.exception("Ошибка при запросе товаров")
         await bot.send_message(chat_id, "Не удалось подключиться к базе товаров.")
         return
+
     if not products:
         await bot.send_message(chat_id, "Товаров пока нет.")
         return
+
     keyboard = get_main_menu_keyboard(products)
     await bot.send_message(chat_id, "Наши товары:", reply_markup=keyboard)
     await state.set_state(ShopStates.HANDLE_MENU)
@@ -65,7 +70,12 @@ async def process_product_selection(callback: types.CallbackQuery, state: FSMCon
     """Показывает детальную информацию о выбранном товаре."""
     product_id = callback.data
     await state.update_data(current_product_id=product_id)
-    product = fetch_product(product_id)
+    try:
+        product = fetch_product(product_id)
+    except RequestException:
+        logger.exception("Ошибка при запросе товара")
+        await callback.answer("Ошибка загрузки товара.", show_alert=True)
+        return
 
     if not product:
         await callback.answer("Товар не найден.")
@@ -108,28 +118,41 @@ async def add_to_cart_handler(callback: types.CallbackQuery, state: FSMContext):
         await callback.answer("Ошибка: товар не найден.")
         return
 
-    cart_id = get_or_create_cart(user_id)
-    if not cart_id:
+    try:
+        cart_id = get_or_create_cart(user_id)
+    except RequestException:
+        logger.exception("Ошибка при получении/создании корзины")
         await callback.answer("Не удалось создать корзину.", show_alert=True)
         return
 
-    success = add_to_cart(cart_id, product_id, quantity=1.0)
-    if success:
-        await callback.answer("✅ Товар добавлен в корзину!", show_alert=True)
-    else:
+    try:
+        add_to_cart(cart_id, product_id, quantity=1.0)
+    except RequestException:
+        logger.exception("Ошибка при добавлении товара в корзину")
         await callback.answer("❌ Ошибка при добавлении.", show_alert=True)
+        return
+
+    await callback.answer("✅ Товар добавлен в корзину!", show_alert=True)
 
 
 async def show_cart_handler(callback: types.CallbackQuery, state: FSMContext):
     """Показывает содержимое корзины пользователя."""
     user_id = str(callback.from_user.id)
-    cart_id = get_or_create_cart(user_id)
 
-    if not cart_id:
+    try:
+        cart_id = get_or_create_cart(user_id)
+    except RequestException:
+        logger.exception("Ошибка при получении корзины.", show_alert=True)
         await callback.answer("Не удалось получить корзину.", show_alert=True)
         return
 
-    items = get_cart_contents(cart_id)
+    try:
+        items = get_cart_contents(cart_id)
+    except RequestException:
+        logger.exception("Ошибка при получении содержимого корзины")
+        await callback.message.answer("Не удалось загрузить корзину.")
+        await callback.answer()
+        return
 
     text = format_cart_text(items)
 
@@ -146,35 +169,36 @@ async def show_cart_handler(callback: types.CallbackQuery, state: FSMContext):
 async def delete_from_cart_handler(callback: types.CallbackQuery, state: FSMContext):
     """Удаляет выбранный товар из корзины и обновляет сообщение."""
     item_id = callback.data.split("_", 1)[1]
-    success = delete_cart_item(item_id)
 
-    if success:
-        await callback.answer("Товар удалён из корзины.")
+    try:
+        delete_cart_item(item_id)
+    except RequestException:
+        logger.exception("Ошибка при удалении товара из корзины.")
+        await callback.message.edit_text("Ошибка при удалении товара.")
+        return
 
-        user_id = str(callback.from_user.id)
+    await callback.answer("Товар удалён из корзины.")
+
+    user_id = str(callback.from_user.id)
+
+    try:
         cart_id = get_or_create_cart(user_id)
+        items = get_cart_contents(cart_id)
+    except RequestException:
+        logger.exception("Ошибка при обновлении корзины после удаления")
+        await callback.message.edit_text("Не удалось обновить корзину.")
+        return
 
-        if cart_id:
-            items = get_cart_contents(cart_id)
-
-            if items:
-                text = format_cart_text(items)
-
-                await callback.message.edit_text(
-                    text, parse_mode="Markdown", reply_markup=get_cart_keyboard(items)
-                )
-
-            else:
-                await callback.message.edit_text(
-                    "🛒 Ваша корзина пуста.",
-                    reply_markup=get_back_to_menu_keyboard(),
-                )
-
-        else:
-            await callback.message.edit_text("Ошибка при обновлении корзины.")
-
+    if items:
+        text = format_cart_text(items)
+        await callback.message.edit_text(
+            text, parse_mode="Markdown", reply_markup=get_cart_keyboard(items)
+        )
     else:
-        await callback.answer("Ошибка при удалении товара.", show_alert=True)
+        await callback.message.edit_text(
+            "🛒 Ваша корзина пуста.",
+            reply_markup=get_back_to_menu_keyboard(),
+        )
 
     await state.set_state(ShopStates.HANDLE_CART)
 
@@ -201,15 +225,18 @@ async def process_email_input(message: types.Message, state: FSMContext):
         return
 
     user_id = str(message.from_user.id)
-    customer_id = create_customer(user_id, email)
 
-    if customer_id:
-        logger.info(f"Customer saved with ID {customer_id}")
-        await message.answer(
-            f"Спасибо! Ваш email {email} принят. Мы скоро свяжемся с вами."
-        )
-    else:
+    try:
+        customer_id = create_customer(user_id, email)
+    except RequestException:
+        logger.exception("Ошибка при создании клиента")
         await message.answer("Не удалось сохранить ваши данные. Попробуйте позже.")
+        return
+
+    logger.info(f"Customer saved with ID {customer_id}")
+    await message.answer(
+        f"Спасибо! Ваш email {email} принят. Мы скоро свяжемся с вами."
+    )
 
     await send_products_list(message.chat.id, message.bot, state)
 
