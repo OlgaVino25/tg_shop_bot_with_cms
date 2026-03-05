@@ -38,7 +38,7 @@ def fetch_product_image(product):
         return None
 
     if image_url.startswith("/"):
-        image_url = STRAPI_BASE_URL + image_url
+        image_url = f"{STRAPI_BASE_URL}{image_url}"
 
     response = requests.get(image_url, stream=True)
     response.raise_for_status()
@@ -67,10 +67,10 @@ def add_to_cart(cart_id: str, product_id: str, quantity: float = 1.0):
     }
     response = requests.get(CART_ITEM_URL, params=filter_params)
     response.raise_for_status()
-    existing = response.json().get("data", [])
-    if existing:
-        item_id = existing[0]["documentId"]
-        new_qty = existing[0]["quantity"] + quantity
+    existing_cart_items = response.json().get("data", [])
+    if existing_cart_items:
+        item_id = existing_cart_items[0]["documentId"]
+        new_qty = existing_cart_items[0]["quantity"] + quantity
         update_response = requests.put(
             f"{CART_ITEM_URL}/{item_id}", json={"data": {"quantity": new_qty}}
         )
