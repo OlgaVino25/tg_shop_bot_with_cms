@@ -2,13 +2,14 @@ import logging
 import requests
 from io import BytesIO
 from requests.exceptions import RequestException
+from settings import STRAPI_BASE_URL
 
 logger = logging.getLogger(__name__)
 
-STRAPI_URL = "http://localhost:1337/api/products"
-CART_URL = "http://localhost:1337/api/carts"
-CART_ITEM_URL = "http://localhost:1337/api/cart-items"
-CUSTOMER_URL = "http://localhost:1337/api/customers"
+STRAPI_URL = f"{STRAPI_BASE_URL}/api/products"
+CART_URL = f"{STRAPI_BASE_URL}/api/carts"
+CART_ITEM_URL = f"{STRAPI_BASE_URL}/api/cart-items"
+CUSTOMER_URL = f"{STRAPI_BASE_URL}/api/customers"
 
 
 def fetch_products():
@@ -54,8 +55,7 @@ def fetch_product_image(product):
         return None
 
     if image_url.startswith("/"):
-        base_url = "http://localhost:1337"
-        image_url = base_url + image_url
+        image_url = STRAPI_BASE_URL + image_url
 
     try:
         response = requests.get(image_url, stream=True)
