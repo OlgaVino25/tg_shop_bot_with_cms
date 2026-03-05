@@ -189,17 +189,18 @@ async def delete_from_cart_handler(callback: types.CallbackQuery, state: FSMCont
         await callback.message.edit_text("Не удалось обновить корзину.")
         return
 
-    if items:
-        text = format_cart_text(items)
-        await callback.message.edit_text(
-            text, parse_mode="Markdown", reply_markup=get_cart_keyboard(items)
-        )
-    else:
+    if not items:
         await callback.message.edit_text(
             "🛒 Ваша корзина пуста.",
             reply_markup=get_back_to_menu_keyboard(),
         )
+        await state.set_state(ShopStates.HANDLE_CART)
+        return
 
+    text = format_cart_text(items)
+    await callback.message.edit_text(
+        text, parse_mode="Markdown", reply_markup=get_cart_keyboard(items)
+    )
     await state.set_state(ShopStates.HANDLE_CART)
 
 
