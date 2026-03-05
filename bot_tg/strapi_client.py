@@ -49,14 +49,14 @@ def get_or_create_cart(user_id: str):
     """Возвращает ID корзины для пользователя. Если нет — создаёт."""
     response = requests.get(CART_URL, params={"filters[userId][$eq]": user_id})
     response.raise_for_status()
-    data = response.json().get("data", [])
+    carts = response.json().get("data", [])
 
-    if data:
-        return data[0]["documentId"]
+    if carts:
+        return carts[0]["documentId"]
 
-    create_response = requests.post(CART_URL, json={"data": {"userId": user_id}})
-    create_response.raise_for_status()
-    return create_response.json()["data"]["documentId"]
+    creation_response = requests.post(CART_URL, json={"data": {"userId": user_id}})
+    creation_response.raise_for_status()
+    return creation_response.json()["data"]["documentId"]
 
 
 def add_to_cart(cart_id: str, product_id: str, quantity: float = 1.0):
@@ -71,10 +71,10 @@ def add_to_cart(cart_id: str, product_id: str, quantity: float = 1.0):
     if existing:
         item_id = existing[0]["documentId"]
         new_qty = existing[0]["quantity"] + quantity
-        upd_response = requests.put(
+        update_response = requests.put(
             f"{CART_ITEM_URL}/{item_id}", json={"data": {"quantity": new_qty}}
         )
-        upd_response.raise_for_status()
+        update_response.raise_for_status()
         return True
 
     payload = {
@@ -84,8 +84,8 @@ def add_to_cart(cart_id: str, product_id: str, quantity: float = 1.0):
             "cart": {"connect": [cart_id]},
         }
     }
-    create_response = requests.post(CART_ITEM_URL, json=payload)
-    create_response.raise_for_status()
+    creation_response = requests.post(CART_ITEM_URL, json=payload)
+    creation_response.raise_for_status()
     return True
 
 
@@ -95,8 +95,8 @@ def get_cart_contents(cart_id: str):
         f"{CART_URL}/{cart_id}", params={"populate": "cart_items.product"}
     )
     response.raise_for_status()
-    data = response.json()["data"]
-    items = data.get("cart_items", [])
+    cart_data = response.json()["data"]
+    items = cart_data.get("cart_items", [])
     result = []
 
     for item in items:

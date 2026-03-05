@@ -112,8 +112,8 @@ async def back_to_products(callback: types.CallbackQuery, state: FSMContext):
 async def add_to_cart_handler(callback: types.CallbackQuery, state: FSMContext):
     """Добавляет текущий товар в корзину пользователя."""
     user_id = str(callback.from_user.id)
-    data = await state.get_data()
-    product_id = data.get("current_product_id")
+    state_data = await state.get_data()
+    product_id = state_data.get("current_product_id")
     if not product_id:
         await callback.answer("Ошибка: товар не найден.")
         return
